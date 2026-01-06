@@ -17,7 +17,8 @@ st.bar_chart(data=overall_spent_data, x="source_name", y="total_amount", x_label
 st.markdown("---")
 year_options = list(range(2024, pd.Timestamp.now().year + 1))
 
-selected_year = st.selectbox("Select Year", options=year_options, index=len(year_options)-1)
+st.markdown("**<span style='font-size:1.5em'>Select Year</span>**", unsafe_allow_html=True)
+selected_year = st.selectbox("", options=year_options, index=len(year_options)-1)
 st.markdown("---")
 
 st.header(f"Spends Through All Sources In the Year {selected_year}")
@@ -30,7 +31,8 @@ st.markdown("---")
 month_order = ["January", "February", "March", "April", "May", "June",
                "July", "August", "September", "October", "November", "December"]
 
-selected_month = st.selectbox("Select Month", options=month_order, index=month_order.index("January"))
+st.markdown("**<span style='font-size:1.5em'>Select Month</span>**", unsafe_allow_html=True)
+selected_month = st.selectbox("", options=month_order, index=month_order.index("January"))
 st.markdown("---")
 
 st.header(f"Spends Through All Sources In the Year {selected_year} And Month {selected_month}")
@@ -46,7 +48,8 @@ st.bar_chart(data=overall_spent_in_year_and_month_data, x="source_name", y="tota
 st.markdown("---")
 source_options = overall_spent_data['source_name'].unique()
 
-selected_source = st.selectbox("Select Source", options=source_options)
+st.markdown("**<span style='font-size:1.5em'>Select Source</span>**", unsafe_allow_html=True)
+selected_source = st.selectbox("", options=source_options)
 st.markdown("---")
 
 st.header(f"Spends Through {selected_source} in All Time")
