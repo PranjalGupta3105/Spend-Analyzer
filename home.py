@@ -3,6 +3,11 @@ import pandas as pd
 
 conn = st.connection("sql", type="sql", driver="psycopg")
 
+st.set_page_config(
+    page_title="Home",
+    page_icon="🏠",  # Or ":material/home:"
+)
+
 st.title("Expense Analyzer")
 
 year_options = list(range(2024, pd.Timestamp.now().year + 1))
