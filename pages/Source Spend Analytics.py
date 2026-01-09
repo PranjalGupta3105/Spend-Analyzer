@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-conn = st.connection("sql", type="sql", driver="psycopg", ttl = 10)
+conn = st.connection("sql", type="sql", driver="psycopg2", ttl = 10)
 
 st.set_page_config(
     page_title="Source Spend Analytics",

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-conn = st.connection("sql", type="sql", driver="psycopg")
+conn = st.connection("sql", type="sql", driver="psycopg2")
 
 st.set_page_config(
     page_title="Home",
