@@ -19,6 +19,12 @@ Spend Analyzer is a Streamlit web application for visualizing and analyzing your
   - Visualize spends by source using bar charts and line charts.
   - Interactive dropdowns for year, month, and source selection with bold, large labels for clarity.
 
+- **Method Spend Analytics (Method Data Page):**
+  - View total spends through all payment methods for all time, a selected year, or a selected month.
+  - Select a payment method to analyze its spending trends over the years and months.
+  - Visualize spends by method using bar charts and line charts.
+  - Interactive dropdowns for year, month, and method selection with bold, large labels for clarity.
+
 - **Database Integration:**
   - Connects to a PostgreSQL database using `psycopg2` and SQLAlchemy.
   - Fetches and aggregates expense data dynamically based on user selections.
@@ -44,14 +50,16 @@ Spend Analyzer is a Streamlit web application for visualizing and analyzing your
    ```
 
 4. **Navigate the App**
-  - Use the sidebar to access the Home page and Source Spend Analytics page.
+  - Use the sidebar to access the Home page, Source Spend Analytics page, and Method Spend Analytics page.
   - On the Home page, select the year and month to view overall and monthly expenses.
   - On the Source Spend Analytics page, analyze spends by payment source, year, and month with interactive charts.
+  - On the Method Spend Analytics page, analyze spends by payment method, year, and month with interactive charts.
 
 ## File Structure
 
 - `home.py` : Main Streamlit app for expense analysis
 - `pages/Source Spend Analytics.py` : Analyze spends by payment source, year, and month
+- `pages/Method Spend Analytics.py` : Analyze spends by payment method, year, and month
 - `pages/` : Additional analytics pages (if any)
 - `requirements.txt` : Python dependencies
 
