@@ -22,27 +22,68 @@ if "authenticated" not in st.session_state:
     st.session_state.page = "Home"
 
 if not st.session_state.authenticated:
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        .login-container {
+        body {{
+            background-image: url('logo.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+        }}
+        .background-overlay {{
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(255,255,255,0.65);
+            z-index: 0;
+        }}
+        .login-outer {{
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }}
+        .login-container {{
             max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-top: 5rem;
-        }
+            width: 100%;
+            padding: 2rem 2rem 1.5rem 2rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.97);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            text-align: center;
+        }}
+        .login-title {{
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 600;
+        }}
         </style>
+        <div class="background-overlay"></div>
+        <div class="login-outer">
+            <div class="login-container">
+                <div class="login-title">Expense Analyzer</div>
+                <div id="login-form-anchor"></div>
+            </div>
+        </div>
     """, unsafe_allow_html=True)
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.title("🔐 Login")
-    st.markdown("---")
-    with st.form("login_form"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        submit_button = st.form_submit_button("Login", use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Render the login form inside the anchor using Streamlit widgets
+    with st.empty():
+        with st.form("login_form"):
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit_button = st.form_submit_button("Login", use_container_width=True)
+    # Move the form into the login-container using a little JS (Streamlit limitation workaround)
+    st.markdown("""
+        <script>
+        const form = window.parent.document.querySelector('section.main .stForm');
+        const anchor = window.parent.document.getElementById('login-form-anchor');
+        if (form && anchor && !anchor.hasChildNodes()) {
+            anchor.appendChild(form);
+        }
+        </script>
+    """, unsafe_allow_html=True)
     if submit_button:
         if not username or not password:
             st.error("❌ Please enter both username and password.")
@@ -76,8 +117,8 @@ st.sidebar.title(f"👋 Hello, {st.session_state.user_username}")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Menu",
-    ["Home", "Method Spend Analytics", "Source Spend Analytics"],
-    index=["Home", "Method Spend Analytics", "Source Spend Analytics"].index(st.session_state.page),
+    ["Home", "Method Spend Dashboard", "Source Spend Dashboard"],
+    index=["Home", "Method Spend Dashboard", "Source Spend Dashboard"].index(st.session_state.page),
     key="navigation"
 )
 st.session_state.page = page
@@ -94,7 +135,49 @@ st.sidebar.markdown("---")
 
 # ===================== Home Section =====================
 if page == "Home":
-    st.title("Expense Analytics")
+    st.title("All Expenses")
+    # --- Amount Blocks ---
+    today = datetime.datetime.now()
+    current_year = today.year
+    current_month = today.month
+    prev_month = current_month - 1 if current_month > 1 else 12
+    prev_month_year = current_year if current_month > 1 else current_year - 1
+
+    # Current Month Spend
+    current_month_spend = conn.query(f"""
+        SELECT COALESCE(ROUND(SUM(amount)::numeric, 2), 0) AS total_amount
+        FROM expenses
+        WHERE EXTRACT(YEAR FROM date) = {current_year}
+          AND EXTRACT(MONTH FROM date) = {current_month}
+          AND is_deleted = 0 AND is_repayed = 0;
+    """)["total_amount"].iloc[0]
+
+    # Previous Month Spend
+    prev_month_spend = conn.query(f"""
+        SELECT COALESCE(ROUND(SUM(amount)::numeric, 2), 0) AS total_amount
+        FROM expenses
+        WHERE EXTRACT(YEAR FROM date) = {prev_month_year}
+          AND EXTRACT(MONTH FROM date) = {prev_month}
+          AND is_deleted = 0 AND is_repayed = 0;
+    """)["total_amount"].iloc[0]
+
+    # Average Monthly Spend (all time)
+    avg_monthly_spend = conn.query(f"""
+        SELECT COALESCE(ROUND(AVG(monthly_total)::numeric, 2), 0) AS avg_amount
+        FROM (
+            SELECT EXTRACT(YEAR FROM date) AS yr, EXTRACT(MONTH FROM date) AS mn, SUM(amount) AS monthly_total
+            FROM expenses
+            WHERE is_deleted = 0 AND is_repayed = 0
+            GROUP BY EXTRACT(YEAR FROM date), EXTRACT(MONTH FROM date)
+        ) t;
+    """)["avg_amount"].iloc[0]
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Current Month Spend", f"₹ {current_month_spend:,.2f}")
+    col2.metric("Previous Month Spend", f"₹ {prev_month_spend:,.2f}")
+    col3.metric("Avg Monthly Spend", f"₹ {avg_monthly_spend:,.2f}")
+
+    # --- Existing Home Page Content ---
     year_options = list(range(2024, pd.Timestamp.now().year + 1))
     selected_year = st.selectbox("Select Year", options=year_options, index=len(year_options)-1)
     data = conn.query(f"SELECT EXTRACT(MONTH FROM date) AS month_no,TRIM(TO_CHAR(date, 'Month')) AS month_name,ROUND(SUM(amount)::numeric, 2) AS total_amount FROM \"public\".\"expenses\" WHERE EXTRACT(YEAR FROM date) = {selected_year} AND is_deleted = 0 AND is_repayed = 0 GROUP BY TO_CHAR(date, 'Month'), EXTRACT(MONTH FROM date) ORDER BY EXTRACT(MONTH FROM date);")
@@ -109,7 +192,7 @@ if page == "Home":
         st.write(f"No data available for {selected_month} {selected_year}.")
 
 # ===================== Method Spend Analytics Section =====================
-elif page == "Method Spend Analytics":
+elif page == "Method Spend Dashboard":
     st.title("Method Analytics")
     st.header("Spends Through All Methods in All Time")
     overall_spent_data = conn.query(f"SELECT e.*, pm.name method_name FROM (SELECT method_id, ROUND(SUM(amount)::numeric, 2) total_amount FROM expenses WHERE is_deleted = 0 AND is_repayed = 0 GROUP BY method_id)e LEFT JOIN payment_methods pm ON e.method_id = pm.id;")
@@ -156,7 +239,7 @@ elif page == "Method Spend Analytics":
     st.bar_chart(data=method_spends_over_months_in_year, x="cal_month", y="total_amount", x_label="Month", y_label="Total Amount", sort=False)
 
 # ===================== Source Spend Analytics Section =====================
-elif page == "Source Spend Analytics":
+elif page == "Source Spend Dashboard":
     st.title("Source Analytics")
     st.header("Spends Through All Sources in All Time")
     overall_spent_data = conn.query(f"SELECT e.*, ps.name source_name FROM (SELECT source_id, ROUND(SUM(amount)::numeric, 2) total_amount FROM expenses WHERE is_deleted = 0 AND is_repayed = 0 GROUP BY source_id)e LEFT JOIN payment_sources ps ON e.source_id = ps.id;")
