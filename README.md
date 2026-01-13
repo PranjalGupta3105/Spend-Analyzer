@@ -5,7 +5,15 @@ Spend Analyzer is a Streamlit Single Page Web Application for visualizing and an
 
 ---
 
+
 ## Features
+
+- **Enhanced Login Page UI/UX:**
+  - The login page features a full-page branded background image (`logo.jpg`) with a semi-transparent white overlay for improved contrast and readability.
+  - The login box is centered both vertically and horizontally, styled with modern rounded corners and a shadow for a professional look.
+  - The "Expense Analyzer" title and login form are grouped in a single, visually prominent container.
+  - The login form is programmatically moved into the styled container using a JavaScript workaround for Streamlit’s layout limitations.
+  - Custom CSS ensures a consistent, visually appealing login experience across devices.
 
 - **Secure Login & JWT Authentication:**
   - User authentication with hashed password validation (bcrypt).
@@ -16,6 +24,13 @@ Spend Analyzer is a Streamlit Single Page Web Application for visualizing and an
   - All analytics and authentication logic are merged into a single file (`app.py`).
   - Custom sidebar navigation appears only after login.
   - No duplicate or public page links before authentication.
+
+- **Home Page Analytics Enhancement:**
+  - Three summary boxes at the top of the Home page provide at-a-glance analytics:
+    - **Current Month Spend:** Total spend for the current month.
+    - **Previous Month Spend:** Total spend for the previous month.
+    - **Average Monthly Spend:** Average spend per month (all time).
+  - These metrics help users quickly understand their spending trends.
 
 - **Yearly Expense Overview (Home Section):**
   - Select a year to view total expenses for each month.
