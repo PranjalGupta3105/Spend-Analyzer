@@ -117,8 +117,8 @@ st.sidebar.title(f"👋 Hello, {st.session_state.user_username}")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Menu",
-    ["Home", "Method Spend Dashboard", "Source Spend Dashboard"],
-    index=["Home", "Method Spend Dashboard", "Source Spend Dashboard"].index(st.session_state.page),
+    ["Home", "Method Spend Dashboard", "Source Spend Dashboard", "Custom Reports"],
+    index=["Home", "Method Spend Dashboard", "Source Spend Dashboard", "Custom Reports"].index(st.session_state.page),
     key="navigation"
 )
 st.session_state.page = page
@@ -284,3 +284,39 @@ elif page == "Source Spend Dashboard":
     st.header(f"Overall Spends Through {selected_source}, over the months in the year {selected_year}")
     source_spends_over_months_in_year = conn.query(f"SELECT e.*, ps.name source_name FROM (SELECT EXTRACT(MONTH FROM date) cal_month, ROUND(SUM(amount)::numeric, 2) total_amount FROM expenses WHERE source_id = {selected_source_id} AND EXTRACT(YEAR FROM date) = '{selected_year}' AND is_deleted = 0 AND is_repayed = 0 GROUP BY EXTRACT(MONTH FROM date))e LEFT JOIN payment_sources ps ON ps.id = {selected_source_id} ORDER BY cal_month;")
     st.bar_chart(data=source_spends_over_months_in_year, x="cal_month", y="total_amount", x_label="Month", y_label="Total Amount", sort=False)
+
+elif page == "Custom Reports":
+    st.title("Custom Reports")
+    st.header("Credit Card Statement as of Today")
+    st.info("This section is under further development. Data may be inaccurate. Stay tuned for updates!")
+    cc_statement_as_today = conn.query(f"""
+        SELECT ROW_NUMBER() OVER (ORDER BY payment_cards.statement_date) AS s_no, payment_sources.name card_issuing_bank, payment_cards.name, payment_cards.statement_date, card_statement.statement_balance_as_of_today
+        FROM(
+        WITH card_info AS (
+        	SELECT pc.name,  
+        	LEFT(statement_date, 2)::INT statement_date,
+        	source_id,
+        	CONCAT(
+        		(CASE WHEN EXTRACT(MONTH FROM NOW())-1 = 0 THEN EXTRACT(YEAR FROM NOW())-1 ELSE EXTRACT(YEAR FROM NOW()) END),'-',
+        		(CASE WHEN EXTRACT(MONTH FROM NOW())-1 = 0 THEN 12 ELSE EXTRACT(MONTH FROM NOW())-1 END),'-',
+        		LEFT(statement_date, 2)
+        		)::DATE from_date,
+        	CONCAT(
+        		EXTRACT(YEAR FROM NOW()),'-',
+        		EXTRACT(MONTH FROM NOW()),'-',
+        		LEFT(statement_date, 2) 
+        		)::DATE to_date
+        	FROM payment_cards pc 
+        	WHERE pc.is_active = 1 AND method_id = 4
+        	ORDER BY statement_date ASC
+        )
+        SELECT SUM(amount) statement_balance_as_of_today, expenses.source_id 
+        FROM expenses 
+        RIGHT JOIN card_info ON expenses.source_id = card_info.source_id
+        WHERE method_id = 4 AND expenses.is_deleted = 0 AND is_repayed = 0
+        AND date BETWEEN card_info.from_date AND card_info.to_date
+        GROUP BY expenses.source_id) card_statement
+        INNER JOIN payment_sources ON card_statement.source_id = payment_sources.id
+        INNER JOIN payment_cards ON card_statement.source_id = payment_cards.source_id AND method_id = 4 AND payment_cards.is_active = 1
+        ORDER BY payment_cards.statement_date ASC;""")
+    st.dataframe(cc_statement_as_today, use_container_width=True, hide_index=True)
