@@ -287,36 +287,51 @@ elif page == "Source Spend Dashboard":
 
 elif page == "Custom Reports":
     st.title("Custom Reports")
-    st.header("Credit Card Statement as of Today")
-    st.info("This section is under further development. Data may be inaccurate. Stay tuned for updates!")
-    cc_statement_as_today = conn.query(f"""
-        SELECT ROW_NUMBER() OVER (ORDER BY payment_cards.statement_date) AS s_no, payment_sources.name card_issuing_bank, payment_cards.name, payment_cards.statement_date, card_statement.statement_balance_as_of_today
-        FROM(
-        WITH card_info AS (
-        	SELECT pc.name,  
-        	LEFT(statement_date, 2)::INT statement_date,
-        	source_id,
-        	CONCAT(
-        		(CASE WHEN EXTRACT(MONTH FROM NOW())-1 = 0 THEN EXTRACT(YEAR FROM NOW())-1 ELSE EXTRACT(YEAR FROM NOW()) END),'-',
-        		(CASE WHEN EXTRACT(MONTH FROM NOW())-1 = 0 THEN 12 ELSE EXTRACT(MONTH FROM NOW())-1 END),'-',
-        		LEFT(statement_date, 2)
-        		)::DATE from_date,
-        	CONCAT(
-        		EXTRACT(YEAR FROM NOW()),'-',
-        		EXTRACT(MONTH FROM NOW()),'-',
-        		LEFT(statement_date, 2) 
-        		)::DATE to_date
-        	FROM payment_cards pc 
-        	WHERE pc.is_active = 1 AND method_id = 4
-        	ORDER BY statement_date ASC
-        )
-        SELECT SUM(amount) statement_balance_as_of_today, expenses.source_id 
-        FROM expenses 
-        RIGHT JOIN card_info ON expenses.source_id = card_info.source_id
-        WHERE method_id = 4 AND expenses.is_deleted = 0 AND is_repayed = 0
-        AND date BETWEEN card_info.from_date AND card_info.to_date
-        GROUP BY expenses.source_id) card_statement
-        INNER JOIN payment_sources ON card_statement.source_id = payment_sources.id
-        INNER JOIN payment_cards ON card_statement.source_id = payment_cards.source_id AND method_id = 4 AND payment_cards.is_active = 1
-        ORDER BY payment_cards.statement_date ASC;""")
+    st.header("Credit Card Statement for respective statement periods as of today")
+
+    cc_statement_as_today = conn.query(f"""	SELECT statement.card_id \"Card Id\", statement.statement_amount \"Statement Amount\", statement.no_of_transactions \"No of Transactions\",payment_cards.name \"Card Name\", payment_sources.name \"Bank Name\",
+	make_date(
+				EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')::int,
+				EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')::int,
+				(regexp_split_to_array(statement_date, '[thrdnd]'))[1]::int
+	) AS \"From Date\",
+	make_date(
+	  			EXTRACT(YEAR FROM CURRENT_DATE)::int,
+	  			EXTRACT(MONTH FROM CURRENT_DATE)::int,
+	  			(regexp_split_to_array(statement_date, '[thrdnd]'))[1]::int
+	) AS \"To Date\"		
+	FROM
+	(WITH card_details AS (SELECT
+	   						 id,
+							make_date(
+	  							EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')::int,
+	  							EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')::int,
+	  							(regexp_split_to_array(statement_date, '[thrdnd]'))[1]::int
+							) AS stmt_from_date,
+							make_date(
+	  							EXTRACT(YEAR FROM CURRENT_DATE)::int,
+	  							EXTRACT(MONTH FROM CURRENT_DATE)::int,
+	  							(regexp_split_to_array(statement_date, '[thrdnd]'))[1]::int
+							) AS stmt_to_date
+						FROM payment_cards
+						WHERE method_id = 4
+						  AND is_active = 1)
+	SELECT expenses.card_id,SUM(expenses.amount) statement_amount, COUNT(expenses.*) no_of_transactions
+	FROM expenses
+	JOIN card_details
+	ON expenses.card_id = card_details.id
+	WHERE date BETWEEN card_details.stmt_from_date AND card_details.stmt_to_date AND card_id IS NOT NULL 
+	GROUP BY expenses.card_id)statement
+	LEFT JOIN payment_cards ON
+	statement.card_id = payment_cards.id
+    JOIN payment_sources
+	ON payment_cards.source_id = payment_sources.id
+    ORDER BY \"From Date\"""")
     st.dataframe(cc_statement_as_today, use_container_width=True, hide_index=True)
+
+    # Get total of statement_amount for all cards
+    total_statement_amount = cc_statement_as_today["Statement Amount"].sum()
+    st.write(f"**Total Statement Amount Across All Cards: ₹ {total_statement_amount:,.2f}**")
+
+    st.markdown("---")
+    st.header("")
